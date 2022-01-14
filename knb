@@ -87,6 +87,7 @@ GENERATOR="knb"
 BENCHMARK_DATE=$(date -u "+%Y-%m-%d %H:%M:%S")
 DEBUG=false
 DEBUG_LEVEL=0
+CNI_MTU=""
 SERVER_NODE=""
 CLIENT_NODE=""
 EXECID="$$"
@@ -884,6 +885,14 @@ do
 		--help|-h)
 			usage && exit
 			;;
+		
+		# MTU
+		--mtu)
+			shift
+			[ "$1" = "" ] && fatal "$arg flag must be followed by a value"
+			CNI_MTU="$1"
+			info "Setting MTU to ${1}"
+			;;
 
 		# Plot data with plotly/orca
 		--plot|-p)
@@ -1177,10 +1186,12 @@ $DEBUG && debug "Discovered k8s version is $DISCOVERED_K8S_VERSION"
 echo $DISCOVERED_K8S_VERSION > $DATADIR/k8s-version
 
 #--- MTU Detection ----------------------------------------
-
-info "Detecting CNI MTU"
-CNI_MTU=$(kubectl exec -i  $NAMESPACEOPT $SERVER_POD_NAME -- ip link \
-	| grep "UP,LOWER_UP" | grep -v LOOPBACK | grep -oE "mtu [0-9]*"| $BIN_AWK '{print $2}')
+if [ "$CNI_MTU" == "" ]
+then
+	info "Detecting CNI MTU"
+	CNI_MTU=$(kubectl exec -i  $NAMESPACEOPT $SERVER_POD_NAME -- ip link \
+		| grep "UP,LOWER_UP" | grep -v LOOPBACK | grep -oE "mtu [0-9]*"| $BIN_AWK '{print $2}')
+fi
 $DEBUG && debug "CNI MTU is $CNI_MTU"
 echo $CNI_MTU > $DATADIR/mtu
 
