@@ -88,6 +88,7 @@ BENCHMARK_DATE=$(date -u "+%Y-%m-%d %H:%M:%S")
 DEBUG=false
 DEBUG_LEVEL=0
 CNI_MTU=""
+IP_VERSION="4"
 SERVER_NODE=""
 CLIENT_NODE=""
 EXECID="$$"
@@ -894,6 +895,15 @@ do
 			info "Setting MTU to ${1}"
 			;;
 
+		--4)
+			IP_VERSION="4"
+			info "Setting IP version to 4"
+			;;
+
+		--6)
+			IP_VERSION="6"
+			info "Setting IP version to 6"
+			;;
 		# Plot data with plotly/orca
 		--plot|-p)
 			PLOT_DATA=true
@@ -1156,8 +1166,13 @@ info "Waiting for server to be running"
 kubectl wait $NAMESPACEOPT --for=condition=Ready pod/$SERVER_POD_NAME --timeout=${POD_WAIT_TIMEOUT}s >/dev/null \
 	|| detect-pod-failure-reason-and-fatal $SERVER_POD_NAME "Failed to start server pod"
 
-SERVER_IP=$(kubectl get $NAMESPACEOPT pod $SERVER_POD_NAME -o jsonpath={.status.podIP})
-$DEBUG && debug "Server IP address is $SERVER_IP"
+if [ "$IP_VERSION" == "4" ]; then
+	SERVER_IP=$(kubectl get $NAMESPACEOPT pod $SERVER_POD_NAME -o jsonpath={.status.podIP})
+	$DEBUG && debug "Server IP address is $SERVER_IP"
+else
+	SERVER_IP=$(kubectl get $NAMESPACEOPT pod/$SERVER_POD_NAME -o jsonpath='{.status.podIPs[1].ip}')
+	$DEBUG && debug "Server IP address is $SERVER_IP"
+fi
 SERVICE_IP=$(kubectl get $NAMESPACEOPT svc $SERVER_SERVICE_NAME -o jsonpath={.spec.clusterIP})
 $DEBUG && debug "Service IP address is $SERVICE_IP"
 #==============================================================================
